@@ -39,10 +39,4 @@ build_script:
 test_script:
 - cmd: >-
 
-    if NOT [%run_tests%] == "" (
-
-    set PATH=Release;%PATH%
-
-    tests.exe
-
-    )
+    if NOT [%run_tests%] == "" set PATH=Release;%PATH% & tests.exe
