@@ -176,6 +176,7 @@ TEST_F(LeelaTest, MoveOnOccupiedSq) {
     EXPECT_NE(output.find("illegal move"), std::string::npos);
 }
 
+
 TEST_F(LeelaTest, TimeControl) {
     // Initialize network
     cfg_weightsfile = "../src/tests/0k.txt";
@@ -183,17 +184,53 @@ TEST_F(LeelaTest, TimeControl) {
     cfg_max_playouts = 1;
     cfg_num_threads = 1;
 
-    auto maingame = get_gamestate();
-    auto search = std::make_unique<UCTSearch>();
+    // TODO I tried to make these separate tests,
+    // but it died locally when leelaz ran the second time.
+    {
+        auto maingame = get_gamestate();
+        auto search = std::make_unique<UCTSearch>();
 
-    testing::internal::CaptureStdout();
-    GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
-    auto move = search->think(maingame.get_to_move(), maingame);
-    maingame.play_move(move);
-    EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (100-1)*100);
-    GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
-    move = search->think(maingame.get_to_move(), maingame);
-    EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (120-1)*100);
-    maingame.play_move(move);
-    std::string output = testing::internal::GetCapturedStdout();
+        GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
+        auto move = search->think(maingame.get_to_move(), maingame);
+        maingame.play_move(move);
+        EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (100-1)*100);
+        GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
+        move = search->think(maingame.get_to_move(), maingame);
+        EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (120-1)*100);
+        maingame.play_move(move);
+    }
+
+    {
+        cfg_max_playouts = 0;
+        auto maingame = get_gamestate();
+        auto search = std::make_unique<UCTSearch>();
+        std::string output1, output2, output3;
+
+        // Absolute time 100s = 1.37s per move in opening.
+        // Enough to be visible on display_times
+        GTP::execute(maingame, "time_settings 100 0 0");
+        // Use assert here because if the time breaks we might
+        // cause the test to think forever.
+        ASSERT_EQ(maingame.get_timecontrol().max_time_for_move(maingame.get_to_move()), 137);
+        testing::internal::CaptureStderr();
+        maingame.get_timecontrol().display_color_time(FastBoard::BLACK);
+        output1 = testing::internal::GetCapturedStderr();
+        EXPECT_EQ(output1, "Black time: 00:01:40\n");
+
+        auto move = search->think(maingame.get_to_move(), maingame);
+        maingame.play_move(move);
+        EXPECT_EQ(maingame.get_timecontrol().max_time_for_move(maingame.get_to_move()), 137);
+        testing::internal::CaptureStderr();
+        maingame.get_timecontrol().display_color_time(FastBoard::BLACK);
+        output2 = testing::internal::GetCapturedStderr();
+        EXPECT_EQ(output1, "Black time: 00:01:38\n");
+
+        search->get_gamestate().get_timecontrol().display_times();
+        move = search->think(maingame.get_to_move(), maingame);
+        maingame.play_move(move);
+        testing::internal::CaptureStderr();
+        maingame.get_timecontrol().display_color_time(FastBoard::BLACK);
+        output3 = testing::internal::GetCapturedStderr();
+        EXPECT_EQ(output1, "Black time: 00:01:36\n");
+    }
 }

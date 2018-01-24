@@ -39,12 +39,11 @@ public:
     void adjust_time(int color, int time, int stones);
     void set_boardsize(int boardsize);
     void display_times();
+    void display_color_time(int color);
     void reset_clocks();
     std::string to_text_sgf();
 
 private:
-    void display_color_time(int color);
-
     int m_maintime;
     int m_byotime;
     int m_byostones;
