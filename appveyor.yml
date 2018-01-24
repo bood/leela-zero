@@ -40,6 +40,6 @@ build_script:
 
 test_script:
 - cmd: >-
-    cd Release
+    set PATH=Release;%PATH%
 
     tests.exe
