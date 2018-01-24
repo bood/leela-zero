@@ -38,7 +38,7 @@ build_script:
 
 test_script:
 - cmd: >-
-    - cmd: >-
+
     if NOT [%run_tests%] == "" (
 
     set PATH=Release;%PATH%
