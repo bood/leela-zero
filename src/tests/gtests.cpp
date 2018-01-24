@@ -31,6 +31,7 @@
 #include "NNCache.h"
 #include "Random.h"
 #include "ThreadPool.h"
+#include "UCTSearch.h"
 #include "Utils.h"
 #include "Zobrist.h"
 
@@ -173,4 +174,26 @@ TEST_F(LeelaTest, MoveOnOccupiedSq) {
 
     // Find this error in the output
     EXPECT_NE(output.find("illegal move"), std::string::npos);
+}
+
+TEST_F(LeelaTest, TimeControl) {
+    // Initialize network
+    cfg_weightsfile = "../src/tests/0k.txt";
+    Network::initialize();
+    cfg_max_playouts = 1;
+    cfg_num_threads = 1;
+
+    auto maingame = get_gamestate();
+    auto search = std::make_unique<UCTSearch>();
+
+    testing::internal::CaptureStdout();
+    GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
+    auto move = search->think(maingame.get_to_move(), maingame);
+    maingame.play_move(move);
+    EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (100-1)*100);
+    GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
+    move = search->think(maingame.get_to_move(), maingame);
+    EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (120-1)*100);
+    maingame.play_move(move);
+    std::string output = testing::internal::GetCapturedStdout();
 }
