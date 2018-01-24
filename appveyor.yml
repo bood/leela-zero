@@ -4,6 +4,8 @@ platform: x64
 environment:
   matrix:
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    features: FEATURE_USE_CPU_ONLY
 install:
 - cmd: nuget restore msvc\VS2017 -PackagesDirectory pkgs
 cache: pkgs -> appveyor.yml
@@ -26,20 +28,15 @@ build_script:
 
     set BLAS_HOME="..\pkgs\OpenBLAS.0.2.14.1\lib\native"
 
-    cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_PREFIX_PATH="%QTDIR%/lib/cmake/" -DBOOST_ROOT="C:/Libraries/boost_1_65_1" -DBOOST_LIBRARYDIR="C:/Libraries/boost_1_65_1/lib64-msvc-14.1" -DBoost_USE_STATIC_LIBS=ON -DZLIB_ROOT="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native" -DZLIB_LIBRARY="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native/zlib-msvc14-x64.targets" -DOpenCL_LIBRARY="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/opencl-nug.targets" -DOpenCL_INCLUDE_DIR="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/include" -DBLAS_LIBRARIES="%PKG_FOLDER%/OpenBLAS.0.2.14.1/build/native/openblas.targets" -Dgtest_force_shared_crt=ON ..
+    for /F %%f in ("%features%") do set DEFINES="%DEFINES% -D%%f"
 
-    cmake --build . --target leelaz --config Release -- /maxcpucount:2
+    echo %DEFINES%
 
-    mkdir ..\cpu
-
-    cd ..\cpu
-
-    cmake -G "Visual Studio 15 2017 Win64" -DFEATURE_USE_CPU_ONLY=1 -DCMAKE_PREFIX_PATH="%QTDIR%/lib/cmake/" -DBOOST_ROOT="C:/Libraries/boost_1_65_1" -DBOOST_LIBRARYDIR="C:/Libraries/boost_1_65_1/lib64-msvc-14.1" -DBoost_USE_STATIC_LIBS=ON -DZLIB_ROOT="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native" -DZLIB_LIBRARY="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native/zlib-msvc14-x64.targets" -DOpenCL_LIBRARY="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/opencl-nug.targets" -DOpenCL_INCLUDE_DIR="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/include" -DBLAS_LIBRARIES="%PKG_FOLDER%/OpenBLAS.0.2.14.1/build/native/openblas.targets" -Dgtest_force_shared_crt=ON ..
+    cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="%PKG_FOLDER%/../build/" %DEFINES% -DCMAKE_PREFIX_PATH="%QTDIR%/lib/cmake/" -DBOOST_ROOT="C:/Libraries/boost_1_65_1" -DBOOST_LIBRARYDIR="C:/Libraries/boost_1_65_1/lib64-msvc-14.1" -DBoost_USE_STATIC_LIBS=ON -DZLIB_ROOT="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native" -DZLIB_LIBRARY="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native/zlib-msvc14-x64.targets" -DOpenCL_LIBRARY="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/opencl-nug.targets" -DOpenCL_INCLUDE_DIR="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/include" -DBLAS_LIBRARIES="%PKG_FOLDER%/OpenBLAS.0.2.14.1/build/native/openblas.targets" -Dgtest_force_shared_crt=ON ..
 
     cmake --build . --config Release -- /maxcpucount:2
 
 test_script:
 - cmd: >-
-    cd Release
 
     tests.exe
