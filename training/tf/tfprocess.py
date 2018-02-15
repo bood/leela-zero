@@ -55,7 +55,7 @@ class TFProcess:
         # For exporting
         self.weights = []
 
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.016, allow_growth=True)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.010, allow_growth=True)
         config = tf.ConfigProto(gpu_options=gpu_options)
         self.session = tf.Session(config=config)
 
