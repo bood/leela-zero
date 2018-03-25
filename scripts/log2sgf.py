@@ -52,14 +52,18 @@ def move2sgf(move):
     sgf_move = sgf_coord[index1] + sgf_coord[index2]
     return(sgf_move)
 
-def get_player_move(segment, is_black):
+def get_player_move(segment, is_black, lz_variation=None):
     line = segment[0]
     if (is_black):
         move = line.split(">>play W ")[1].split("\r")[0].strip()
-        sgf_move = ";W[%s]NOW" % move2sgf(move)
+        sgf_move = "(;W[%s]NOW)" % move2sgf(move)
+        if lz_variation:
+            sgf_move += lz_variation
     else:
         move = line.split(">>play B ")[1].split("\r")[0].strip()
-        sgf_move = ";B[%s]NOW" % move2sgf(move)
+        sgf_move = "(;B[%s]NOW)" % move2sgf(move)
+        if lz_variation:
+            sgf_move += lz_variation
     return sgf_move
 
 def get_lz_move(segment, is_black):
@@ -83,7 +87,7 @@ def get_lz_move(segment, is_black):
                 sequences.append(sequence)
 
     pv = []
-    pv.append(get_lz_pv(sequences[0], is_black))
+    pv.append(get_lz_pv(sequences[0], is_black, ignore_first=True))
     add_pv2 = False
     # if no big differences, add two variations
     if (abs(win_rates[0]-win_rates[1]) < 3 and playouts[0] < 5*playouts[1]):
@@ -93,7 +97,7 @@ def get_lz_move(segment, is_black):
     if (is_black):
         sgf_move = "(;B[%s]C[LZ win rate: %5.2f\nMain Variation: %s]NOW)" % \
             (move2sgf(moves[0]), win_rates[0], sequences[0])
-        sgf_move += "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
+        lz_variation = "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
             (win_rates[0],  playouts[0], pv[0])
         if (add_pv2):
             sgf_move += "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
@@ -101,18 +105,19 @@ def get_lz_move(segment, is_black):
     else:
         sgf_move = "(;W[%s]C[LZ win rate: %5.2f\nMain Variation: %s]NOW)" % \
             (move2sgf(moves[0]), win_rates[0], sequences[0])
-        sgf_move += "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
+        lz_variation = "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
             (win_rates[0],  playouts[0], pv[0])
         if (add_pv2):
             sgf_move += "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
                 (win_rates[1],  playouts[1], pv[1])
 
-    return sgf_move
+    return (sgf_move, lz_variation)
 
-def get_lz_pv(sequence, is_black):
+def get_lz_pv(sequence, is_black, ignore_first=False):
     pv = ""
-    for move in sequence.split(' '):
-        if (is_black):
+    start_index = 1 if ignore_first else 0
+    for move in sequence.split(' ')[start_index:]:
+        if is_black != ignore_first:
             pv += ";B[%s]" % move2sgf(move)
         else:
             pv += ";W[%s]" % move2sgf(move)
@@ -124,18 +129,19 @@ def create_sgf(logname):
     player_segments, lz_segments, is_black = seperate_log(logname)
 
     content = "(;FF[4]CA[UTF-8]KM[7.5]SZ[19]\nNOW)"
+    lz_variation = None
     if (is_black):
         for (lz, pl) in zip(lz_segments, player_segments):
-            lz_move = get_lz_move(lz, is_black)
+            (lz_move, lz_variation) = get_lz_move(lz, is_black)
             content = content.split("NOW")[0] + lz_move + content.split("NOW")[1]
-            pl_move = get_player_move(pl, is_black)
+            pl_move = get_player_move(pl, is_black, lz_variation)
             content = content.split("NOW")[0] + pl_move + content.split("NOW")[1]
         print(content)
     else:
         for (pl, lz) in zip(player_segments, lz_segments):
-            pl_move = get_player_move(pl, is_black)
+            pl_move = get_player_move(pl, is_black, lz_variation)
             content = content.split("NOW")[0] + pl_move + content.split("NOW")[1]
-            lz_move = get_lz_move(lz, is_black)
+            (lz_move, lz_variation) = get_lz_move(lz, is_black)
             content = content.split("NOW")[0] + lz_move + content.split("NOW")[1]
         print(content)
     content = content.split("NOW")[0] + content.split("NOW")[1]
