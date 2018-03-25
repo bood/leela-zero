@@ -66,7 +66,7 @@ def get_player_move(segment, is_black, lz_variation=None):
             sgf_move += lz_variation
     return sgf_move
 
-def get_lz_move(segment, is_black):
+def get_lz_move(segment, is_black, last_win_rate):
     moves = []
     win_rates = []
     playouts = []
@@ -94,24 +94,29 @@ def get_lz_move(segment, is_black):
         add_pv2 = True
         pv.append(get_lz_pv(sequences[1], is_black))
 
+    if last_win_rate:
+        win_rate_delta = win_rates[0] - last_win_rate
+    else:
+        win_rate_delta = 0.0
+
     if (is_black):
-        sgf_move = "(;B[%s]C[LZ win rate: %5.2f\nMain Variation: %s]NOW)" % \
-            (move2sgf(moves[0]), win_rates[0], sequences[0])
+        sgf_move = "(;B[%s]C[LZ win rate: %5.2f (%5.2f)\nMain Variation: %s]NOW)" % \
+            (move2sgf(moves[0]), win_rates[0], win_rate_delta, sequences[0])
         lz_variation = "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
             (win_rates[0],  playouts[0], pv[0])
         if (add_pv2):
             sgf_move += "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
                 (win_rates[1],  playouts[1], pv[1])
     else:
-        sgf_move = "(;W[%s]C[LZ win rate: %5.2f\nMain Variation: %s]NOW)" % \
-            (move2sgf(moves[0]), win_rates[0], sequences[0])
+        sgf_move = "(;W[%s]C[LZ win rate: %5.2f  (%5.2f)\nMain Variation: %s]NOW)" % \
+            (move2sgf(moves[0]), win_rates[0], win_rate_delta, sequences[0])
         lz_variation = "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
             (win_rates[0],  playouts[0], pv[0])
         if (add_pv2):
             sgf_move += "(;C[LZ win rate: %5.2f\nPlayouts: %d]%s)" % \
                 (win_rates[1],  playouts[1], pv[1])
 
-    return (sgf_move, lz_variation)
+    return (sgf_move, lz_variation, win_rates[0])
 
 def get_lz_pv(sequence, is_black, ignore_first=False):
     pv = ""
@@ -130,9 +135,10 @@ def create_sgf(logname):
 
     content = "(;FF[4]CA[UTF-8]KM[7.5]SZ[19]\nNOW)"
     lz_variation = None
+    lz_win_rate = None
     if (is_black):
         for (lz, pl) in zip(lz_segments, player_segments):
-            (lz_move, lz_variation) = get_lz_move(lz, is_black)
+            (lz_move, lz_variation, lz_win_rate) = get_lz_move(lz, is_black, lz_win_rate)
             content = content.split("NOW")[0] + lz_move + content.split("NOW")[1]
             pl_move = get_player_move(pl, is_black, lz_variation)
             content = content.split("NOW")[0] + pl_move + content.split("NOW")[1]
@@ -141,7 +147,7 @@ def create_sgf(logname):
         for (pl, lz) in zip(player_segments, lz_segments):
             pl_move = get_player_move(pl, is_black, lz_variation)
             content = content.split("NOW")[0] + pl_move + content.split("NOW")[1]
-            (lz_move, lz_variation) = get_lz_move(lz, is_black)
+            (lz_move, lz_variation, lz_win_rate) = get_lz_move(lz, is_black, lz_win_rate)
             content = content.split("NOW")[0] + lz_move + content.split("NOW")[1]
         print(content)
     content = content.split("NOW")[0] + content.split("NOW")[1]
