@@ -86,6 +86,12 @@ def get_lz_move(segment, is_black, last_win_rate):
                 sequence=err_line.split("PV: ")[1].strip()
                 sequences.append(sequence)
 
+    if not win_rates:
+        win_rates = [0, 0]
+        playouts = [0, 0]
+        moves = ["pass", "pass"]
+        sequences = ["pass", "pass"]
+
     pv = []
     pv.append(get_lz_pv(sequences[0], is_black, ignore_first=True))
     add_pv2 = False
