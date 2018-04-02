@@ -20,43 +20,34 @@ def seperate_log(logname):
 
         segment.append(line)
 
+    black_segments = []
+    white_segments = []
     lz_segments = []
+    is_black = None
     for segment in segments:
-        if ">>genmove" in segment[0]:
-            lz_segments.append(segment)
+        if ">>genmove b" in segment[0]:
+            if is_black == False:
+                raise Exception("Cannot determine LZ is white or black")
+            is_black = True
+            black_segments.append(segment)
+        elif ">>play B" in segment[0]:
+            black_segments.append(segment)
+        elif ">>genmove w" in segment[0]:
+            if is_black == True:
+                raise Exception("Cannot determine LZ is white or black")
+            is_black = False
+            white_segments.append(segment)
+        elif ">>play W" in segment[0]:
+            white_segments.append(segment)
 
-    if ">>genmove b" in lz_segments[0][0]:
-        print("lz is black")
-        is_black = True
+    print("lz is %s" % ("black" if is_black else "white"))
+
+    if is_black:
+        lz_segments = black_segments
+        player_segments = white_segments
     else:
-        print("lz is white")
-        is_black = False
-
-    # Handle handicap games
-    lz_pass = []
-    player_segments = []
-    for segment in segments:
-        if is_black:
-            if ">>play B" in segment[0]:
-                if ">>play B PASS" in segment[0]:
-                    lz_pass.append(segment)
-                else:
-                    # Raise error when log is broken
-                    raise ValueError("Broken log, got error move %s" % segment[0])
-            if ">>play W" in segment[0]:
-                player_segments.append(segment)
-        else:
-            if ">>play W" in segment[0]:
-                if ">>play W PASS" in segment[0]:
-                    lz_pass.append(segment)
-                else:
-                    # Raise error when log is broken
-                    raise ValueError("Broken log, got error move %s" % segment[0])
-            if ">>play B" in segment[0]:
-                player_segments.append(segment)
-
-    print("game with %d handicap(s)" % (len(lz_pass)+1))
-    lz_segments = lz_pass + lz_segments
+        player_segments = black_segments
+        lz_segments = white_segments
 
     return player_segments, lz_segments, is_black
 
@@ -65,7 +56,7 @@ def move2sgf(move):
     sgf_coord = "abcdefghijklmnopqrs"
     lz_coord = "ABCDEFGHJKLMNOPQRST"
 
-    if move == "pass":
+    if move == "pass" or move == "PASS":
         return "tt"
 
     index1 = lz_coord.index(move[0])
@@ -110,10 +101,14 @@ def get_lz_move(segment, is_black, last_win_rate):
                 sequences.append(sequence)
 
     if not win_rates:
+        move = "pass"
+        if ">>play" in segment[0]:
+            move = segment[0].split(" ")[2].strip()
+            print move
         win_rates = [0]
         playouts = [0]
-        moves = ["pass"]
-        sequences = ["pass"]
+        moves = [move]
+        sequences = [move]
 
     pv = []
     pv.append(get_lz_pv(sequences[0], is_black, ignore_first=True))
