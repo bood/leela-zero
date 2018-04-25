@@ -84,6 +84,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
+        ("fastmove", po::value<int>()->default_value(cfg_fastmove_cnt),
+                     "Make first x moves fast during main time")
 #ifdef USE_OPENCL
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
@@ -278,6 +280,10 @@ static void parse_commandline(int argc, char *argv[]) {
         if (!vm.count("playouts") && !vm.count("visits")) {
             cfg_max_visits = 3200; // Default to self-play and match values.
         }
+    }
+
+    if (vm.count("fastmove")) {
+        cfg_fastmove_cnt = vm["fastmove"].as<int>();
     }
 
     auto out = std::stringstream{};
