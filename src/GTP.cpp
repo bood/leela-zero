@@ -72,7 +72,7 @@ FILE* cfg_logfile_handle;
 bool cfg_quiet;
 std::string cfg_options_str;
 bool cfg_benchmark;
-int cfg_fastmove_cnt;
+size_t cfg_fastmove_cnt;
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;

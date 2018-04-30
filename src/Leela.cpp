@@ -283,7 +283,7 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 
     if (vm.count("fastmove")) {
-        cfg_fastmove_cnt = vm["fastmove"].as<int>();
+        cfg_fastmove_cnt = (size_t)std::max(0, vm["fastmove"].as<int>());
     }
 
     auto out = std::stringstream{};
