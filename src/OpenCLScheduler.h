@@ -23,6 +23,10 @@
 #include <list>
 #include <vector>
 
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
+
 #include "SMP.h"
 #include "ForwardPipe.h"
 #include "OpenCL.h"
@@ -74,5 +78,8 @@ private:
 
     SMP::Mutex m_context_pool_mutex;
 };
+
+extern std::mutex batch_mutex;
+extern std::condition_variable batch_cv;
 
 #endif

@@ -173,7 +173,7 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 
     if (vm.count("benchmark")) {
-        cfg_quiet = true;  // Set this early to avoid unnecessary output.
+        cfg_quiet = false;  // Set this early to avoid unnecessary output.
     }
 
 #ifdef USE_TUNER

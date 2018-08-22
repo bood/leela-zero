@@ -24,7 +24,11 @@
 #include "Utils.h"
 #include "OpenCLScheduler.h"
 
+#include <chrono>
+
 using Utils::ceilMultiple;
+using Utils::myprintf;
+static const int BATCH_SIZE = 4;
 
 static std::vector<float> zeropad_U(const std::vector<float>& U,
                                     const int outputs, const int channels,
@@ -160,32 +164,83 @@ void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
     }
 }
 
+std::mutex batch_mutex;
+std::condition_variable batch_cv;
+static auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SQUARES * MAX_BATCH);
+static auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SQUARES * MAX_BATCH);
+static auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SQUARES * MAX_BATCH);
+static std::atomic<int> batch_index(0);
+
+using namespace std::chrono_literals;
+
 template <typename net_t>
 void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
                                      std::vector<float>& output_pol,
                                      std::vector<float>& output_val) {
-    std::shared_ptr<ContextPoolEntry> ctx;
-    auto queue_num = size_t{0};
-    {
-        LOCK(m_context_pool_mutex, lock);
-        while (queue_num < m_context_pool.size()) {
-            if (!m_context_pool[queue_num].empty()) {
-                ctx = std::move(m_context_pool[queue_num].front());
-                m_context_pool[queue_num].pop_front();
-                break;
-            }
-            queue_num++;
-        }
-        // if this failed, it means we ran out of contexts
-        // which should be more than or equal to the number of threads
-        assert(ctx != nullptr);
+    auto index = std::atomic_fetch_add(&batch_index, 1);
+    myprintf("prepare input %d\n", index);
+    // Acquire a batch index and fills batch input buffer
+    std::copy(input.begin(), input.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SQUARES * index);
+
+    if (index != BATCH_SIZE - 1) {
+      std::unique_lock<std::mutex> batch_lock(batch_mutex);
+      // Wait for a full batch
+      batch_cv.wait(batch_lock);
     }
 
-    m_networks[ctx->net_index]->forward(input, output_pol, output_val, ctx->context);
+    auto batch_index_final = std::atomic_load(&batch_index);
+    auto actual_batch_size = size_t{0};
+    if (index == BATCH_SIZE - 1) {
+        // Full batch
+        actual_batch_size = BATCH_SIZE;
+    } else if (batch_index_final < BATCH_SIZE) {
+        // Partial batch
+        actual_batch_size = batch_index_final;
+    }
 
-    {
-        LOCK(m_context_pool_mutex, lock);
-        m_context_pool[queue_num].push_back(std::move(ctx));
+    if (actual_batch_size > 0) {
+        // Batch ready
+        std::shared_ptr<ContextPoolEntry> ctx;
+        auto queue_num = size_t{0};
+        {
+            LOCK(m_context_pool_mutex, lock);
+            while (queue_num < m_context_pool.size()) {
+                if (!m_context_pool[queue_num].empty()) {
+                    ctx = std::move(m_context_pool[queue_num].front());
+                    m_context_pool[queue_num].pop_front();
+                    break;
+                }
+                queue_num++;
+            }
+            // if this failed, it means we ran out of contexts
+            // which should be more than or equal to the number of threads
+            assert(ctx != nullptr);
+        }
+
+        myprintf("forward begin %d\n", index);
+        m_networks[ctx->net_index]->forward(batch_input, batch_output_pol, batch_output_val, ctx->context, actual_batch_size);
+
+        {
+            LOCK(m_context_pool_mutex, lock);
+            m_context_pool[queue_num].push_back(std::move(ctx));
+        }
+
+        batch_cv.notify_all();
+    }
+
+    myprintf("copy output begin %d\n", index);
+    std::copy(batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SQUARES * index,
+              batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SQUARES * (index + 1),
+              output_pol.begin()
+        );
+    std::copy(batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SQUARES * index,
+              batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SQUARES * (index + 1),
+              output_val.begin()
+        );
+
+    // Reset index for next batch
+    if (index == 0) {
+        std::atomic_store(&batch_index, 0);
     }
 }
 
