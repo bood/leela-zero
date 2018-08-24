@@ -30,10 +30,10 @@ void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * 
     real T2[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
 
     const real Bt[WINOGRAD_ALPHA * WINOGRAD_ALPHA] = \
-                       {1.0, 0.0, 0.0, 0.0,
-                         0.0, 1.0, -1.0, 1.0,
-                         -1.0, 1.0, 1.0, 0.0,
-                         0.0, 0.0, 0.0, -1.0};
+                       {1.0, 0.0, -1.0, 0.0,
+                         0.0, 1.0, 1.0, 0.0,
+                         0.0, -1.0, 1.0, 0.0,
+                         0.0, 1.0, 0.0, -1.0};
 
     // Calculates transpose(B).x.B
     for (int i = 0; i < WINOGRAD_ALPHA; i++){
@@ -154,10 +154,8 @@ void __out_transform_eq(__global const net_t * restrict M, real o[WINOGRAD_M * W
     }
 
     const real At[WINOGRAD_M * WINOGRAD_ALPHA] = \
-                    {1.0, 1.0,
-                     1.0, 1.0,
-                     1.0, -1.0,
-                     0.0, -1.0};
+                    {1.0, 1.0, 1.0, 0.0,
+                     0.0, 1.0, -1.0, -1.0};
 
     // Calculates transpose(A).temp_m.A
     for (int i = 0; i < WINOGRAD_M; i++){
