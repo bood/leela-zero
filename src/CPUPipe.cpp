@@ -73,12 +73,10 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                 WinogradTile T1, T2;
 
                 const auto Bt = std::array<float, WINOGRAD_TILE>
-                           {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
-                            0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
-                            0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
-                            0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
-                            0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
-                            0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
+                    {1.0, 0.0, 0.0, 0.0,
+                     0.0, 1.0, -1.0, 1.0,
+                     -1.0, 1.0, 1.0, 0.0,
+                     0.0, 0.0, 0.0, -1.0};
 
                 // Calculates transpose(B).x.B
                 for (auto i = 0; i < WINOGRAD_ALPHA; i++){
@@ -160,10 +158,10 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
                 }
 
                 const auto At = std::array<float, WINOGRAD_ALPHA * WINOGRAD_M>
-                      {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
-                       0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
-                       0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
-                       0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
+                    {1.0, 1.0,
+                     1.0, 1.0,
+                     1.0, -1.0,
+                     0.0, -1.0};
 
                 std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_M> temp;
                 std::array<std::array<float, WINOGRAD_M>, WINOGRAD_M> o;
